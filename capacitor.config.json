@@ -1,0 +1,6 @@
+{
+  "appId": "com.courierrun.app",
+  "appName": "CourierRunUK",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

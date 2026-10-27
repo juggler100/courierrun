@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0b1120">
+  <title>CourierRunUK</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card-bg: #151e32;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-blue: #38bdf8;
+      --accent-red: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #243049;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
+    body { background-color: var(--bg); color: var(--text-main); padding: 12px; display: flex; flex-direction: column; gap: 12px; min-height: 100vh; padding-bottom: 30px; }
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 4px 2px; }
+    .brand { font-size: 1.15rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px; }
+    .brand span { color: var(--accent-green); }
+    .status-badge { font-size: 0.72rem; padding: 4px 8px; border-radius: 999px; background: #1e293b; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+    .status-dot.active { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+
+    .banner { background: var(--card-bg); border-radius: 14px; padding: 14px; text-align: center; border: 1px solid var(--border); }
+    .banner-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; }
+    .banner-mode { font-size: 1.3rem; font-weight: 800; margin: 4px 0; text-transform: uppercase; }
+    .banner-speed { font-size: 0.9rem; color: var(--text-muted); font-weight: 600; }
+
+    .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .action-btn { border: none; border-radius: 14px; padding: 18px 8px; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: transform 0.1s; }
+    .action-btn:active { transform: scale(0.97); }
+    .btn-loaded { background: #064e3b; border: 2px solid var(--accent-green); }
+    .btn-dead { background: #451a03; border: 2px solid var(--accent-amber); }
+    .btn-label { font-size: 0.95rem; font-weight: 800; text-transform: uppercase; }
+    .btn-sub { font-size: 0.72rem; opacity: 0.85; }
+
+    .controls-row { display: flex; gap: 8px; }
+    .btn-sec { flex: 1; background: #1e293b; border: 1px solid var(--border); color: var(--text-main); padding: 10px 4px; border-radius: 10px; font-weight: 600; font-size: 0.8rem; cursor: pointer; text-align: center; }
+
+    .card { background: var(--card-bg); border-radius: 14px; padding: 14px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+    .stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; }
+    .stat-box { background: #0f172a; padding: 10px 4px; border-radius: 10px; border: 1px solid #1e293b; }
+    .stat-val { font-size: 1.3rem; font-weight: 800; }
+    .stat-lbl { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; margin-top: 3px; font-weight: 700; }
+
+    .progress-bar-bg { width: 100%; height: 8px; background: #334155; border-radius: 999px; overflow: hidden; display: flex; }
+    .progress-fill-loaded { background: var(--accent-green); height: 100%; width: 0%; transition: width 0.3s; }
+    .progress-fill-dead { background: var(--accent-amber); height: 100%; width: 0%; transition: width 0.3s; }
+
+    .calc-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px; }
+    .calc-val { font-weight: 700; }
+
+    .log-item { background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid #1e293b; margin-bottom: 6px; font-size: 0.8rem; }
+    .log-item-header { display: flex; justify-content: space-between; font-weight: 700; color: #fff; margin-bottom: 4px; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .modal { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 16px; width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
+    .modal-title { font-weight: 800; font-size: 1.1rem; }
+    .input-group { display: flex; flex-direction: column; gap: 4px; }
+    .input-group label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .input-group input, .input-group select { background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 8px 10px; border-radius: 8px; font-size: 1rem; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="brand">🚐 CourierRun<span>UK</span></div>
+    <div class="status-badge" id="gpsBadge">
+      <div class="status-dot" id="gpsDot"></div>
+      <span id="gpsText">GPS Ready</span>
+    </div>
+  </div>
+
+  <div class="banner">
+    <div class="banner-title">Van Tracking Status</div>
+    <div class="banner-mode" id="modeDisplay" style="color: var(--text-muted);">Shift Paused / Idle</div>
+    <div class="banner-speed" id="speedDisplay">0.0 mph</div>
+  </div>
+
+  <div class="grid-buttons">
+    <button class="action-btn btn-loaded" onclick="setMode('LOADED')">
+      <div style="font-size: 1.8rem;">📦</div>
+      <div class="btn-label">Track Loaded</div>
+      <div class="btn-sub">Carrying Cargo</div>
+    </button>
+    <button class="action-btn btn-dead" onclick="setMode('DEAD')">
+      <div style="font-size: 1.8rem;">🚚</div>
+      <div class="btn-label">Track Deadhead</div>
+      <div class="btn-sub">Empty / Repositioning</div>
+    </button>
+  </div>
+
+  <div class="controls-row">
+    <button class="btn-sec" onclick="setMode('IDLE')">⏸ Pause GPS</button>
+    <button class="btn-sec" onclick="showAdjustModal()">➕ Adjust</button>
+    <button class="btn-sec" onclick="showOdoModal()">🎯 Match Speedo</button>
+    <button class="btn-sec" onclick="showSettingsModal()">⚙ Rates</button>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); font-weight:700;">
+      <span>LIVE DISTANCE TALLY</span>
+      <span id="shiftTimer">00:00:00</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat-box">
+        <div class="stat-val" id="loadedMiles" style="color: var(--accent-green);">0.0</div>
+        <div class="stat-lbl">Loaded (<span id="loadedPct">0%</span>)</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="deadMiles" style="color: var(--accent-amber);">0.0</div>
+        <div class="stat-lbl">Dead (<span id="deadPct">0%</span>)</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="totalMiles" style="color: var(--accent-blue);">0.0</div>
+        <div class="stat-lbl">Total Miles</div>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-top:2px;">
+      <span>Efficiency Ratio</span>
+      <span id="ratioText">Awaiting Miles</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-fill-loaded" id="progressLoaded"></div>
+      <div class="progress-fill-dead" id="progressDead"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">SHIFT OUTPUT & FUEL BURN</div>
+    <div class="calc-row"><span>Today's Fuel Used (UK Gal):</span><span class="calc-val"><span id="litresUsed">0.0</span> L (<span id="galsUsed">0.0</span> gal)</span></div>
+    <div class="calc-row"><span>Daily Fuel Expense:</span><span class="calc-val" id="fuelCost" style="color:var(--accent-red);">£0.00</span></div>
+    <div class="calc-row"><span>Cost per Loaded Mile:</span><span class="calc-val" id="costPerLoaded">£0.00 / mi</span></div>
+    <div class="calc-row"><span>Gross Shift Pay:</span><span class="calc-val" id="grossPay" style="color:var(--accent-green);">£0.00</span></div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:4px 0;">
+    <div class="calc-row" style="font-size:1.05rem;"><span>Estimated Net Profit:</span><span class="calc-val" id="netPay">£0.00</span></div>
+  </div>
+
+  <button class="btn-sec" style="background: #0284c7; padding: 14px; font-weight:800; font-size:0.95rem; border:none; border-radius:12px;" onclick="completeShift()">🏁 Complete & Save Shift</button>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">SAVED SHIFT HISTORY</span>
+      <button class="btn-sec" style="padding:4px 10px; font-size:0.75rem; flex:none;" onclick="exportCSV()">📥 Export CSV</button>
+    </div>
+    <div id="historyList" style="max-height: 220px; overflow-y: auto;">
+      <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:10px;">No saved shifts yet.</div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <div class="modal-title">⚙ Rates & MPG</div>
+      <div class="input-group"><label>Van Average MPG</label><input type="number" step="0.1" id="cfgMpg"></div>
+      <div class="input-group"><label>Fuel Price Today (£/L)</label><input type="number" step="0.001" id="cfgFuel"></div>
+      <div class="input-group"><label>Rate per Loaded Mile (£)</label><input type="number" step="0.01" id="cfgRate"></div>
+      <div class="input-group"><label>Flat Rate per Day (£)</label><input type="number" step="1.0" id="cfgFlat"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn-sec" onclick="closeModal('settingsModal')">Cancel</button>
+        <button class="btn-sec" style="background:var(--accent-green); color:#000; font-weight:800;" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Adjust Modal -->
+  <div class="modal-overlay" id="adjustModal">
+    <div class="modal">
+      <div class="modal-title">➕ Quick Adjust Miles</div>
+      <div class="input-group"><label>Category</label><select id="adjType"><option value="LOADED">Loaded Miles</option><option value="DEAD">Deadhead Miles</option></select></div>
+      <div class="input-group"><label>Miles (+ or -)</label><input type="number" step="0.1" id="adjMiles"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn-sec" onclick="closeModal('adjustModal')">Cancel</button>
+        <button class="btn-sec" style="background:var(--accent-blue); color:#000; font-weight:800;" onclick="applyAdjustment()">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Speedo Match Modal -->
+  <div class="modal-overlay" id="odoModal">
+    <div class="modal">
+      <div class="modal-title">🎯 Match Speedo</div>
+      <div class="input-group"><label>Dashboard Target Miles</label><input type="number" step="0.1" id="odoTarget"></div>
+      <div class="input-group"><label>Assign Difference To</label><select id="odoCategory"><option value="PROPORTIONAL">Proportional</option><option value="LOADED">Loaded</option><option value="DEAD">Deadhead</option></select></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn-sec" onclick="closeModal('odoModal')">Cancel</button>
+        <button class="btn-sec" style="background:var(--accent-blue); color:#000; font-weight:800;" onclick="applyOdoSync()">Sync</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let mode = localStorage.getItem('cr_active_mode') || 'IDLE';
+    let loadedDist = parseFloat(localStorage.getItem('cr_active_loaded') || '0.0');
+    let deadDist = parseFloat(localStorage.getItem('cr_active_dead') || '0.0');
+    let shiftStartTimestamp = parseInt(localStorage.getItem('cr_active_start') || '0', 10);
+    let lastPosition = null;
+    let bgWatcherId = null;
+    let timerInterval = null;
+
+    let mpg = parseFloat(localStorage.getItem('cr_mpg') || '38.0');
+    let fuelPrice = parseFloat(localStorage.getItem('cr_fuel') || '1.45');
+    let ratePerMile = parseFloat(localStorage.getItem('cr_rate') || '1.20');
+    let flatPay = parseFloat(localStorage.getItem('cr_flat') || '0.0');
+    let shiftLogs = JSON.parse(localStorage.getItem('cr_history') || '[]');
+
+    function saveActiveTripState() {
+      localStorage.setItem('cr_active_mode', mode);
+      localStorage.setItem('cr_active_loaded', loadedDist.toString());
+      localStorage.setItem('cr_active_dead', deadDist.toString());
+      localStorage.setItem('cr_active_start', shiftStartTimestamp.toString());
+    }
+
+    function setMode(newMode) {
+      mode = newMode;
+      if (!shiftStartTimestamp && mode !== 'IDLE') {
+        shiftStartTimestamp = Date.now();
+      }
+      const modeDisp = document.getElementById('modeDisplay');
+      if (mode === 'LOADED') {
+        modeDisp.innerText = 'CARGO LOADED (EARNING)';
+        modeDisp.style.color = 'var(--accent-green)';
+        startBackgroundGPS();
+      } else if (mode === 'DEAD') {
+        modeDisp.innerText = 'DEADHEAD (EMPTY)';
+        modeDisp.style.color = 'var(--accent-amber)';
+        startBackgroundGPS();
+      } else {
+        modeDisp.innerText = 'SHIFT PAUSED / IDLE';
+        modeDisp.style.color = 'var(--text-muted)';
+        stopBackgroundGPS();
+      }
+      saveActiveTripState();
+      updateUI();
+    }
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (!shiftStartTimestamp) return;
+        const diff = Math.floor((Date.now() - shiftStartTimestamp) / 1000);
+        const hrs = String(Math.floor(diff / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+        const secs = String(diff % 60).padStart(2, '0');
+        document.getElementById('shiftTimer').innerText = `${hrs}:${mins}:${secs}`;
+      }, 1000);
+    }
+
+    function handleLocation(lat, lon, speed) {
+      if (speed !== null && speed !== undefined) {
+        document.getElementById('speedDisplay').innerText = (speed * 2.23694).toFixed(1) + ' mph';
+      }
+      if (lastPosition) {
+        const d = calculateDistance(lastPosition.latitude, lastPosition.longitude, lat, lon);
+        if (d > 0.006) {
+          if (mode === 'LOADED') loadedDist += d;
+          if (mode === 'DEAD') deadDist += d;
+          saveActiveTripState();
+          updateUI();
+        }
+      }
+      lastPosition = { latitude: lat, longitude: lon };
+    }
+
+    // Native Capacitor Background Geolocation (Runs persistent Android Service)
+    async function startBackgroundGPS() {
+      document.getElementById('gpsDot').className = 'status-dot active';
+      document.getElementById('gpsText').innerText = 'GPS Active (Background)';
+      
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundGeolocation) {
+        const BG = window.Capacitor.Plugins.BackgroundGeolocation;
+        if (!bgWatcherId) {
+          bgWatcherId = await BG.addWatcher({
+            backgroundMessage: "Tracking van mileage in background...",
+            backgroundTitle: "CourierRun UK Active",
+            requestPermissions: true,
+            stale: false,
+            distanceFilter: 10
+          }, (loc, err) => {
+            if (loc) handleLocation(loc.latitude, loc.longitude, loc.speed);
+          });
+        }
+      } else if ('geolocation' in navigator) {
+        // Fallback for standard browser
+        if (!bgWatcherId) {
+          bgWatcherId = navigator.geolocation.watchPosition(pos => {
+            handleLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.speed);
+          }, null, { enableHighAccuracy: true });
+        }
+      }
+    }
+
+    function stopBackgroundGPS() {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundGeolocation && bgWatcherId) {
+        window.Capacitor.Plugins.BackgroundGeolocation.removeWatcher({ id: bgWatcherId });
+      } else if (navigator.geolocation && bgWatcherId) {
+        navigator.geolocation.clearWatch(bgWatcherId);
+      }
+      bgWatcherId = null;
+      lastPosition = null;
+      document.getElementById('gpsDot').className = 'status-dot';
+      document.getElementById('gpsText').innerText = 'GPS Idle';
+      document.getElementById('speedDisplay').innerText = '0.0 mph';
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 3958.8;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    }
+
+    function updateUI() {
+      document.getElementById('loadedMiles').innerText = loadedDist.toFixed(1);
+      document.getElementById('deadMiles').innerText = deadDist.toFixed(1);
+      const total = loadedDist + deadDist;
+      document.getElementById('totalMiles').innerText = total.toFixed(1);
+
+      const loadedPct = total > 0 ? ((loadedDist / total) * 100).toFixed(0) : 0;
+      const deadPct = total > 0 ? ((deadDist / total) * 100).toFixed(0) : 0;
+      document.getElementById('loadedPct').innerText = loadedPct + '%';
+      document.getElementById('deadPct').innerText = deadPct + '%';
+      document.getElementById('progressLoaded').style.width = loadedPct + '%';
+      document.getElementById('progressDead').style.width = deadPct + '%';
+      document.getElementById('ratioText').innerText = total > 0 ? `${loadedPct}% Loaded / ${deadPct}% Dead` : 'Awaiting Miles';
+
+      const gallonsUsed = total > 0 ? total / mpg : 0;
+      const litresUsed = gallonsUsed * 4.54609;
+      const totalFuelCost = litresUsed * fuelPrice;
+      const grossEarnings = flatPay > 0 ? flatPay : (loadedDist * ratePerMile);
+      const netProfit = grossEarnings - totalFuelCost;
+      const trueCostPerLoaded = loadedDist > 0 ? (totalFuelCost / loadedDist).toFixed(2) : '0.00';
+
+      document.getElementById('litresUsed').innerText = litresUsed.toFixed(1);
+      document.getElementById('galsUsed').innerText = gallonsUsed.toFixed(1);
+      document.getElementById('fuelCost').innerText = '£' + totalFuelCost.toFixed(2);
+      document.getElementById('costPerLoaded').innerText = '£' + trueCostPerLoaded + ' / mi';
+      document.getElementById('grossPay').innerText = '£' + grossEarnings.toFixed(2);
+      document.getElementById('netPay').innerText = '£' + netProfit.toFixed(2);
+    }
+
+    function completeShift() {
+      const total = loadedDist + deadDist;
+      if (total === 0) return alert('No miles recorded.');
+      if (!confirm('Save shift to history?')) return;
+
+      const gallonsUsed = total / mpg;
+      const litresUsed = gallonsUsed * 4.54609;
+      const totalFuelCost = litresUsed * fuelPrice;
+      const grossEarnings = flatPay > 0 ? flatPay : (loadedDist * ratePerMile);
+      const netProfit = grossEarnings - totalFuelCost;
+
+      const record = {
+        date: new Date().toLocaleDateString('en-GB'),
+        time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        loaded: loadedDist.toFixed(1),
+        dead: deadDist.toFixed(1),
+        total: total.toFixed(1),
+        fuelPrice: fuelPrice.toFixed(3),
+        fuelCost: totalFuelCost.toFixed(2),
+        gross: grossEarnings.toFixed(2),
+        net: netProfit.toFixed(2)
+      };
+
+      shiftLogs.unshift(record);
+      localStorage.setItem('cr_history', JSON.stringify(shiftLogs));
+
+      setMode('IDLE');
+      loadedDist = 0;
+      deadDist = 0;
+      shiftStartTimestamp = 0;
+      saveActiveTripState();
+      if (timerInterval) clearInterval(timerInterval);
+      document.getElementById('shiftTimer').innerText = '00:00:00';
+      updateUI();
+      renderHistory();
+      alert('Shift saved successfully!');
+    }
+
+    function renderHistory() {
+      const list = document.getElementById('historyList');
+      if (shiftLogs.length === 0) {
+        list.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:10px;">No saved shifts yet.</div>`;
+        return;
+      }
+      list.innerHTML = shiftLogs.map((item) => `
+        <div class="log-item">
+          <div class="log-item-header">
+            <span>${item.date} (${item.time})</span>
+            <span style="color:var(--accent-green)">Net: £${item.net}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; color:var(--text-muted); font-size:0.75rem;">
+            <span>Loaded: ${item.loaded} mi</span>
+            <span>Dead: ${item.dead} mi</span>
+            <span>Fuel: £${item.fuelCost}</span>
+            <span>Gross: £${item.gross}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function exportCSV() {
+      if (shiftLogs.length === 0) return alert('No history to export yet.');
+      let csv = 'Date,Time,Loaded Miles,Dead Miles,Total Miles,Fuel Price (£/L),Fuel Cost (£),Gross Pay (£),Net Profit (£)\n';
+      shiftLogs.forEach(s => {
+        csv += `"${s.date}","${s.time}",${s.loaded},${s.dead},${s.total},${s.fuelPrice},${s.fuelCost},${s.gross},${s.net}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', `Courier_Miles_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function showSettingsModal() {
+      document.getElementById('cfgMpg').value = mpg;
+      document.getElementById('cfgFuel').value = fuelPrice;
+      document.getElementById('cfgRate').value = ratePerMile;
+      document.getElementById('cfgFlat').value = flatPay || '';
+      document.getElementById('settingsModal').style.display = 'flex';
+    }
+    function showAdjustModal() {
+      document.getElementById('adjMiles').value = '';
+      document.getElementById('adjustModal').style.display = 'flex';
+    }
+    function showOdoModal() {
+      document.getElementById('odoTarget').value = (loadedDist + deadDist > 0) ? (loadedDist + deadDist).toFixed(1) : '';
+      document.getElementById('odoModal').style.display = 'flex';
+    }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function saveSettings() {
+      mpg = parseFloat(document.getElementById('cfgMpg').value) || 38.0;
+      fuelPrice = parseFloat(document.getElementById('cfgFuel').value) || 1.45;
+      ratePerMile = parseFloat(document.getElementById('cfgRate').value) || 1.20;
+      flatPay = parseFloat(document.getElementById('cfgFlat').value) || 0.0;
+      localStorage.setItem('cr_mpg', mpg);
+      localStorage.setItem('cr_fuel', fuelPrice);
+      localStorage.setItem('cr_rate', ratePerMile);
+      localStorage.setItem('cr_flat', flatPay);
+      closeModal('settingsModal');
+      updateUI();
+    }
+
+    function applyAdjustment() {
+      const type = document.getElementById('adjType').value;
+      const miles = parseFloat(document.getElementById('adjMiles').value);
+      if (!isNaN(miles)) {
+        if (type === 'LOADED') loadedDist = Math.max(0, loadedDist + miles);
+        if (type === 'DEAD') deadDist = Math.max(0, deadDist + miles);
+        saveActiveTripState();
+        updateUI();
+      }
+      closeModal('adjustModal');
+    }
+
+    function applyOdoSync() {
+      const target = parseFloat(document.getElementById('odoTarget').value);
+      const cat = document.getElementById('odoCategory').value;
+      const currentTotal = loadedDist + deadDist;
+      if (!isNaN(target) && target > 0) {
+        if (currentTotal === 0) {
+          if (cat === 'DEAD') deadDist = target;
+          else loadedDist = target;
+        } else {
+          const diff = target - currentTotal;
+          if (cat === 'LOADED') loadedDist = Math.max(0, loadedDist + diff);
+          else if (cat === 'DEAD') deadDist = Math.max(0, deadDist + diff);
+          else {
+            const ratio = target / currentTotal;
+            loadedDist *= ratio;
+            deadDist *= ratio;
+          }
+        }
+        saveActiveTripState();
+        updateUI();
+      }
+      closeModal('odoModal');
+    }
+
+    if (shiftStartTimestamp > 0) {
+      startTimer();
+      if (mode !== 'IDLE') setMode(mode);
+    }
+    updateUI();
+    renderHistory();
+  </script>
+</body>
+</html>

@@ -12,6 +12,7 @@
       --accent-green: #10b981;
       --accent-amber: #f59e0b;
       --accent-blue: #38bdf8;
+      --accent-purple: #a855f7;
       --accent-red: #ef4444;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
@@ -55,8 +56,13 @@
     .calc-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px; }
     .calc-val { font-weight: 700; }
 
-    .log-item { background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid #1e293b; margin-bottom: 6px; font-size: 0.8rem; }
-    .log-item-header { display: flex; justify-content: space-between; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    /* Clean Card Layout for History */
+    .log-item { background: #0f172a; padding: 12px; border-radius: 10px; border: 1px solid #1e293b; margin-bottom: 8px; }
+    .log-item-header { display: flex; justify-content: space-between; font-weight: 700; color: #fff; margin-bottom: 8px; font-size: 0.85rem; }
+    .log-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .log-cell { background: #151e32; padding: 6px 8px; border-radius: 6px; border: 1px solid #243049; }
+    .log-cell-lbl { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+    .log-cell-val { font-size: 0.85rem; font-weight: 800; margin-top: 2px; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
     .modal { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 16px; width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
@@ -99,7 +105,7 @@
     <button class="btn-sec" onclick="setMode('IDLE')">⏸ Pause GPS</button>
     <button class="btn-sec" onclick="showAdjustModal()">➕ Adjust</button>
     <button class="btn-sec" onclick="showOdoModal()">🎯 Match Speedo</button>
-    <button class="btn-sec" onclick="showSettingsModal()">⚙ Rates</button>
+    <button class="btn-sec" onclick="showSettingsModal()">⚙ Rates & VAT</button>
   </div>
 
   <div class="card">
@@ -131,12 +137,16 @@
     </div>
   </div>
 
+  <!-- SHIFT OUTPUT & VAT SECTION -->
   <div class="card">
     <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">SHIFT OUTPUT & FUEL BURN</div>
-    <div class="calc-row"><span>Today's Fuel Used (UK Gal):</span><span class="calc-val"><span id="litresUsed">0.0</span> L (<span id="galsUsed">0.0</span> gal)</span></div>
-    <div class="calc-row"><span>Daily Fuel Expense:</span><span class="calc-val" id="fuelCost" style="color:var(--accent-red);">£0.00</span></div>
+    <div class="calc-row"><span>Today's Fuel Used:</span><span class="calc-val"><span id="litresUsed">0.0</span> L (<span id="galsUsed">0.0</span> UK gal)</span></div>
+    <div class="calc-row"><span>Pump Fuel Expense:</span><span class="calc-val" id="fuelCost" style="color:var(--accent-red);">£0.00</span></div>
+    <div class="calc-row" id="fuelVatRow"><span>Fuel VAT Reclaimable (1/6th):</span><span class="calc-val" id="fuelVat" style="color:var(--accent-purple);">£0.00</span></div>
     <div class="calc-row"><span>Cost per Loaded Mile:</span><span class="calc-val" id="costPerLoaded">£0.00 / mi</span></div>
-    <div class="calc-row"><span>Gross Shift Pay:</span><span class="calc-val" id="grossPay" style="color:var(--accent-green);">£0.00</span></div>
+    <div class="calc-row"><span>Gross Shift Pay (ex VAT):</span><span class="calc-val" id="grossPay" style="color:var(--accent-green);">£0.00</span></div>
+    <div class="calc-row" id="vatPayRow"><span>VAT on Earnings (20%):</span><span class="calc-val" id="vatPay" style="color:var(--accent-purple);">£0.00</span></div>
+    <div class="calc-row" id="totalInvoiceRow" style="font-weight:700;"><span>Total Invoice (Pay + VAT):</span><span class="calc-val" id="totalInvoice">£0.00</span></div>
     <hr style="border:none; border-top:1px solid var(--border); margin:4px 0;">
     <div class="calc-row" style="font-size:1.05rem;"><span>Estimated Net Profit:</span><span class="calc-val" id="netPay">£0.00</span></div>
   </div>
@@ -148,19 +158,26 @@
       <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">SAVED SHIFT HISTORY</span>
       <button class="btn-sec" style="padding:4px 10px; font-size:0.75rem; flex:none;" onclick="exportCSV()">📥 Export CSV</button>
     </div>
-    <div id="historyList" style="max-height: 220px; overflow-y: auto;">
+    <div id="historyList" style="max-height: 250px; overflow-y: auto;">
       <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:10px;">No saved shifts yet.</div>
     </div>
   </div>
 
-  <!-- Settings Modal -->
+  <!-- Settings Modal with VAT Options -->
   <div class="modal-overlay" id="settingsModal">
     <div class="modal">
-      <div class="modal-title">⚙ Rates & MPG</div>
+      <div class="modal-title">⚙ Rates, MPG & VAT</div>
       <div class="input-group"><label>Van Average MPG</label><input type="number" step="0.1" id="cfgMpg"></div>
-      <div class="input-group"><label>Fuel Price Today (£/L)</label><input type="number" step="0.001" id="cfgFuel"></div>
-      <div class="input-group"><label>Rate per Loaded Mile (£)</label><input type="number" step="0.01" id="cfgRate"></div>
-      <div class="input-group"><label>Flat Rate per Day (£)</label><input type="number" step="1.0" id="cfgFlat"></div>
+      <div class="input-group"><label>Fuel Price Today (£/L at pump)</label><input type="number" step="0.001" id="cfgFuel"></div>
+      <div class="input-group"><label>Rate per Loaded Mile (£ ex-VAT)</label><input type="number" step="0.01" id="cfgRate"></div>
+      <div class="input-group"><label>Or Flat Day / Drop Rate (£ ex-VAT)</label><input type="number" step="1.0" id="cfgFlat"></div>
+      <div class="input-group">
+        <label>VAT Registered Status</label>
+        <select id="cfgVatReg">
+          <option value="YES">VAT Registered (Add 20% to invoices & reclaim fuel VAT)</option>
+          <option value="NO">Not VAT Registered</option>
+        </select>
+      </div>
       <div style="display:flex; gap:8px; margin-top:8px;">
         <button class="btn-sec" onclick="closeModal('settingsModal')">Cancel</button>
         <button class="btn-sec" style="background:var(--accent-green); color:#000; font-weight:800;" onclick="saveSettings()">Save</button>
@@ -207,6 +224,7 @@
     let fuelPrice = parseFloat(localStorage.getItem('cr_fuel') || '1.45');
     let ratePerMile = parseFloat(localStorage.getItem('cr_rate') || '1.20');
     let flatPay = parseFloat(localStorage.getItem('cr_flat') || '0.0');
+    let isVatReg = (localStorage.getItem('cr_vat_reg') || 'YES') === 'YES';
     let shiftLogs = JSON.parse(localStorage.getItem('cr_history') || '[]');
 
     function saveActiveTripState() {
@@ -267,10 +285,9 @@
       lastPosition = { latitude: lat, longitude: lon };
     }
 
-    // Native Capacitor Background Geolocation (Runs persistent Android Service)
     async function startBackgroundGPS() {
       document.getElementById('gpsDot').className = 'status-dot active';
-      document.getElementById('gpsText').innerText = 'GPS Active (Background)';
+      document.getElementById('gpsText').innerText = 'GPS Active';
       
       if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundGeolocation) {
         const BG = window.Capacitor.Plugins.BackgroundGeolocation;
@@ -286,7 +303,6 @@
           });
         }
       } else if ('geolocation' in navigator) {
-        // Fallback for standard browser
         if (!bgWatcherId) {
           bgWatcherId = navigator.geolocation.watchPosition(pos => {
             handleLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.speed);
@@ -332,19 +348,35 @@
       document.getElementById('progressDead').style.width = deadPct + '%';
       document.getElementById('ratioText').innerText = total > 0 ? `${loadedPct}% Loaded / ${deadPct}% Dead` : 'Awaiting Miles';
 
+      // UK Imperial Gallon = 4.54609 Litres
       const gallonsUsed = total > 0 ? total / mpg : 0;
       const litresUsed = gallonsUsed * 4.54609;
-      const totalFuelCost = litresUsed * fuelPrice;
+      const grossFuelCost = litresUsed * fuelPrice;
+      
+      // UK VAT Calculations
+      const fuelVatReclaim = isVatReg ? (grossFuelCost / 6) : 0; // VAT fraction in 20% inc-VAT fuel is 1/6
+      const netFuelExpense = isVatReg ? (grossFuelCost - fuelVatReclaim) : grossFuelCost;
+
       const grossEarnings = flatPay > 0 ? flatPay : (loadedDist * ratePerMile);
-      const netProfit = grossEarnings - totalFuelCost;
-      const trueCostPerLoaded = loadedDist > 0 ? (totalFuelCost / loadedDist).toFixed(2) : '0.00';
+      const vatOnEarnings = isVatReg ? (grossEarnings * 0.20) : 0;
+      const totalInvoice = grossEarnings + vatOnEarnings;
+      const netProfit = grossEarnings - netFuelExpense;
+      const trueCostPerLoaded = loadedDist > 0 ? (netFuelExpense / loadedDist).toFixed(2) : '0.00';
 
       document.getElementById('litresUsed').innerText = litresUsed.toFixed(1);
       document.getElementById('galsUsed').innerText = gallonsUsed.toFixed(1);
-      document.getElementById('fuelCost').innerText = '£' + totalFuelCost.toFixed(2);
+      document.getElementById('fuelCost').innerText = '£' + grossFuelCost.toFixed(2);
+      document.getElementById('fuelVat').innerText = '£' + fuelVatReclaim.toFixed(2);
       document.getElementById('costPerLoaded').innerText = '£' + trueCostPerLoaded + ' / mi';
       document.getElementById('grossPay').innerText = '£' + grossEarnings.toFixed(2);
+      document.getElementById('vatPay').innerText = '£' + vatOnEarnings.toFixed(2);
+      document.getElementById('totalInvoice').innerText = '£' + totalInvoice.toFixed(2);
       document.getElementById('netPay').innerText = '£' + netProfit.toFixed(2);
+
+      // Hide VAT rows if user turns off VAT registration
+      document.getElementById('fuelVatRow').style.display = isVatReg ? 'flex' : 'none';
+      document.getElementById('vatPayRow').style.display = isVatReg ? 'flex' : 'none';
+      document.getElementById('totalInvoiceRow').style.display = isVatReg ? 'flex' : 'none';
     }
 
     function completeShift() {
@@ -354,9 +386,14 @@
 
       const gallonsUsed = total / mpg;
       const litresUsed = gallonsUsed * 4.54609;
-      const totalFuelCost = litresUsed * fuelPrice;
+      const grossFuelCost = litresUsed * fuelPrice;
+      const fuelVatReclaim = isVatReg ? (grossFuelCost / 6) : 0;
+      const netFuelExpense = isVatReg ? (grossFuelCost - fuelVatReclaim) : grossFuelCost;
+
       const grossEarnings = flatPay > 0 ? flatPay : (loadedDist * ratePerMile);
-      const netProfit = grossEarnings - totalFuelCost;
+      const vatOnEarnings = isVatReg ? (grossEarnings * 0.20) : 0;
+      const totalInvoice = grossEarnings + vatOnEarnings;
+      const netProfit = grossEarnings - netFuelExpense;
 
       const record = {
         date: new Date().toLocaleDateString('en-GB'),
@@ -365,8 +402,11 @@
         dead: deadDist.toFixed(1),
         total: total.toFixed(1),
         fuelPrice: fuelPrice.toFixed(3),
-        fuelCost: totalFuelCost.toFixed(2),
+        fuelCost: grossFuelCost.toFixed(2),
+        fuelVat: fuelVatReclaim.toFixed(2),
         gross: grossEarnings.toFixed(2),
+        vatCharged: vatOnEarnings.toFixed(2),
+        invoice: totalInvoice.toFixed(2),
         net: netProfit.toFixed(2)
       };
 
@@ -394,29 +434,47 @@
       list.innerHTML = shiftLogs.map((item) => `
         <div class="log-item">
           <div class="log-item-header">
-            <span>${item.date} (${item.time})</span>
-            <span style="color:var(--accent-green)">Net: £${item.net}</span>
+            <span>📅 ${item.date} (${item.time})</span>
+            <span style="color:var(--accent-green)">Net Profit: £${item.net}</span>
           </div>
-          <div style="display:flex; justify-content:space-between; color:var(--text-muted); font-size:0.75rem;">
-            <span>Loaded: ${item.loaded} mi</span>
-            <span>Dead: ${item.dead} mi</span>
-            <span>Fuel: £${item.fuelCost}</span>
-            <span>Gross: £${item.gross}</span>
+          <div class="log-grid">
+            <div class="log-cell">
+              <div class="log-cell-lbl">Loaded</div>
+              <div class="log-cell-val" style="color:var(--accent-green);">${item.loaded} mi</div>
+            </div>
+            <div class="log-cell">
+              <div class="log-cell-lbl">Deadhead</div>
+              <div class="log-cell-val" style="color:var(--accent-amber);">${item.dead} mi</div>
+            </div>
+            <div class="log-cell">
+              <div class="log-cell-lbl">Fuel (Pump)</div>
+              <div class="log-cell-val" style="color:var(--accent-red);">£${item.fuelCost}</div>
+            </div>
+            <div class="log-cell">
+              <div class="log-cell-lbl">Gross (ex VAT)</div>
+              <div class="log-cell-val">£${item.gross}</div>
+            </div>
           </div>
+          ${item.vatCharged && parseFloat(item.vatCharged) > 0 ? `
+            <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.72rem; color:var(--accent-purple); font-weight:600;">
+              <span>+ VAT: £${item.vatCharged} (Inv: £${item.invoice})</span>
+              <span>Reclaim Fuel VAT: £${item.fuelVat || '0.00'}</span>
+            </div>
+          ` : ''}
         </div>
       `).join('');
     }
 
     function exportCSV() {
       if (shiftLogs.length === 0) return alert('No history to export yet.');
-      let csv = 'Date,Time,Loaded Miles,Dead Miles,Total Miles,Fuel Price (£/L),Fuel Cost (£),Gross Pay (£),Net Profit (£)\n';
+      let csv = 'Date,Time,Loaded Miles,Dead Miles,Total Miles,Fuel Price (£/L),Fuel Cost (£),Fuel VAT Reclaim (£),Gross Pay ex-VAT (£),VAT Charged 20% (£),Total Invoice (£),Net Profit (£)\n';
       shiftLogs.forEach(s => {
-        csv += `"${s.date}","${s.time}",${s.loaded},${s.dead},${s.total},${s.fuelPrice},${s.fuelCost},${s.gross},${s.net}\n`;
+        csv += `"${s.date}","${s.time}",${s.loaded},${s.dead},${s.total},${s.fuelPrice},${s.fuelCost},${s.fuelVat || 0},${s.gross},${s.vatCharged || 0},${s.invoice || s.gross},${s.net}\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', `Courier_Miles_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute('download', `Courier_Miles_VAT_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -427,6 +485,7 @@
       document.getElementById('cfgFuel').value = fuelPrice;
       document.getElementById('cfgRate').value = ratePerMile;
       document.getElementById('cfgFlat').value = flatPay || '';
+      document.getElementById('cfgVatReg').value = isVatReg ? 'YES' : 'NO';
       document.getElementById('settingsModal').style.display = 'flex';
     }
     function showAdjustModal() {
@@ -444,10 +503,13 @@
       fuelPrice = parseFloat(document.getElementById('cfgFuel').value) || 1.45;
       ratePerMile = parseFloat(document.getElementById('cfgRate').value) || 1.20;
       flatPay = parseFloat(document.getElementById('cfgFlat').value) || 0.0;
+      isVatReg = document.getElementById('cfgVatReg').value === 'YES';
+
       localStorage.setItem('cr_mpg', mpg);
       localStorage.setItem('cr_fuel', fuelPrice);
       localStorage.setItem('cr_rate', ratePerMile);
       localStorage.setItem('cr_flat', flatPay);
+      localStorage.setItem('cr_vat_reg', isVatReg ? 'YES' : 'NO');
       closeModal('settingsModal');
       updateUI();
     }
